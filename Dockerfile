@@ -1,7 +1,6 @@
-# syntax=docker/dockerfile:experimental
+# syntax=docker/dockerfile:1
 FROM quay.io/unstructured-io/base-images:rocky8.7-3 as base
-
-ARG PIP_VERSION
+ARG PIP_VERSION=23.1.2
 
 # Set up environment
 ENV HOME /home/

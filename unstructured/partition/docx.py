@@ -2,13 +2,15 @@ import os
 import tempfile
 from tempfile import SpooledTemporaryFile
 from typing import IO, BinaryIO, List, Optional, Tuple, Union, cast
-
+import re
 import docx
 from docx.oxml.shared import qn
 from docx.table import Table as DocxTable
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
-
+import pytesseract
+from io import BytesIO
+from PIL import Image as IMAGEPIL
 from unstructured.cleaners.core import clean_bullets
 from unstructured.documents.elements import (
     Address,
@@ -24,6 +26,7 @@ from unstructured.documents.elements import (
     Text,
     Title,
     process_metadata,
+    Image
 )
 from unstructured.file_utils.filetype import FileType, add_metadata_with_filetype
 from unstructured.partition.common import (
@@ -81,7 +84,6 @@ STYLE_TO_ELEMENT_MAPPING = {
     "Title": Title,
 }
 
-
 def _get_paragraph_runs(paragraph):
     """
     Get hyperlink text from a paragraph object.
@@ -106,6 +108,11 @@ def _get_paragraph_runs(paragraph):
 
     return list(_get_runs(paragraph._element, paragraph))
 
+def _get_image_rids(paragraph):
+    rids = []
+    for match in re.finditer('r:embed="([^"]+)"', paragraph._p.xml):
+        rids.append(match.group(1))
+    return rids
 
 # Add the runs property to the Paragraph class
 Paragraph.runs = property(lambda self: _get_paragraph_runs(self))
@@ -120,10 +127,11 @@ def partition_docx(
     include_page_breaks: bool = True,
     include_metadata: bool = True,
     metadata_last_modified: Optional[str] = None,
+    ocr_images: bool = True,
+    ocr_languages: str = "eng+fra",
     **kwargs,
 ) -> List[Element]:
     """Partitions Microsoft Word Documents in .docx format into its document elements.
-
     Parameters
     ----------
     filename
@@ -136,6 +144,11 @@ def partition_docx(
         metadata.
     metadata_last_modified
         The last modified date for the document.
+    ocr_images
+        If true, ORC all images included in the doc.
+    ocr_languages:
+        "eng" stands for English. "fra" stands for French
+
     """
 
     # Verify that only one of the arguments was provided
@@ -167,6 +180,7 @@ def partition_docx(
     page_number = 1 if document_contains_pagebreaks else None
     section = 0
     is_list = False
+    index_paragraph = 0
     for element_item in document.element.body:
         if element_item.tag.endswith("tbl"):
             table = document.tables[table_index]
@@ -185,6 +199,7 @@ def partition_docx(
                     last_modified=metadata_last_modified or last_modification_date,
                     emphasized_text_contents=emphasized_text_contents,
                     emphasized_text_tags=emphasized_text_tags,
+                    page_location=index_paragraph
                 )
                 elements.append(element)
             table_index += 1
@@ -204,8 +219,33 @@ def partition_docx(
                     last_modified=metadata_last_modified or last_modification_date,
                     emphasized_text_contents=emphasized_text_contents,
                     emphasized_text_tags=emphasized_text_tags,
+                    page_location=index_paragraph
                 )
                 elements.append(para_element)
+            elif "graphicData" in paragraph._p.xml:
+                if ocr_images:
+                    image_rids = _get_image_rids(paragraph)
+                    rels = document.part.rels
+                    for rid in image_rids:
+                        if rid in rels:
+                            image_part = rels[rid]._target
+                            image_bytes = image_part.blob
+                            image_ext = image_part.filename.split(".")[-1]
+                            image_stream = BytesIO(image_bytes)
+                            image = IMAGEPIL.open(image_stream)
+                            text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
+
+                            imgElement = Image(text)
+                            imgElement.blob = image_bytes
+                            imgElement.ext = image_ext
+                            imgElement.rid = rid
+                            imgElement.metadata.page_number=page_number
+                            imgElement.metadata.page_location=index_paragraph
+                            imgElement.ocr_txt = "test"
+                            elements.append(imgElement)
+                else:
+                    pass
+
             is_list = False
         elif element_item.tag.endswith("sectPr"):
             if len(headers_and_footers) > section:
@@ -221,7 +261,7 @@ def partition_docx(
             page_number += 1
             if include_page_breaks:
                 elements.append(PageBreak(text=""))
-
+        index_paragraph += 1
     return elements
 
 
@@ -316,8 +356,10 @@ def _get_headers_and_footers(
                     )
 
                     if _type == "header":
+                        metadata.header_footer_type = "header"
                         headers.append(Header(text=text, metadata=metadata))
                     elif _type == "footer":
+                        metadata.header_footer_type = "footer"
                         footers.append(Footer(text=text, metadata=metadata))
 
         headers_and_footers.append((headers, footers))

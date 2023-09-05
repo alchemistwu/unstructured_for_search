@@ -277,12 +277,19 @@ def _partition_pdf_or_image_local(
     out_elements = []
 
     for el in elements:
-        if (isinstance(el, PageBreak) and not include_page_breaks) or (
-            # NOTE(crag): small chunks of text from Image elements tend to be garbage
-            isinstance(el, Image)
-            and (el.text is None or len(el.text) < 24 or el.text.find(" ") == -1)
-        ):
+        if (isinstance(el, PageBreak) and not include_page_breaks):
             continue
+
+        if isinstance(el, Image):
+            #and (el.text is None or len(el.text) < 24 or el.text.find(" ") == -1)
+            print(el)
+        
+        # if (isinstance(el, PageBreak) and not include_page_breaks) or (
+        #     # NOTE(crag): small chunks of text from Image elements tend to be garbage
+        #     isinstance(el, Image)
+        #     and (el.text is None or len(el.text) < 24 or el.text.find(" ") == -1)
+        # ):
+        #     continue
         # NOTE(crag): this is probably always a Text object, but check for the sake of typing
         if isinstance(el, Text):
             el.text = re.sub(
@@ -292,7 +299,7 @@ def _partition_pdf_or_image_local(
             ).strip()
             if el.text or isinstance(el, PageBreak):
                 out_elements.append(cast(Element, el))
-
+            
     return out_elements
 
 

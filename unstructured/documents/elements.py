@@ -137,7 +137,7 @@ class ElementMetadata:
 
     # Page numbers currenlty supported for PDF, HTML and PPT documents
     page_number: Optional[int] = None
-
+    page_location: Optional[List[int]] = None
     # Page name. The sheet name in XLXS documents.
     page_name: Optional[str] = None
 
@@ -495,7 +495,10 @@ class Image(Text):
     """A text element for capturing image metadata."""
 
     category = "Image"
-
+    blob = None
+    ext = ""
+    rid = None
+    ocr_txt = ""
     pass
 
 
