@@ -495,9 +495,8 @@ class Image(Text):
     """A text element for capturing image metadata."""
 
     category = "Image"
-    blob = None
+    data = None
     ext = ""
-    rid = None
     ocr_txt = ""
     pass
 

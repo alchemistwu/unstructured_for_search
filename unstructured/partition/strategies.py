@@ -49,7 +49,8 @@ def determine_pdf_or_image_strategy(
         # Note(yuming): There is no fast strategy for images,
         # use hi_res as a fallback plan since it is the auto default.
         if strategy == "fast":
-            strategy = "hi_res"
+            # strategy = "hi_res"
+            strategy = "ocr_only"
         validate_strategy(strategy, "image")
         pdf_text_extractable = False
     else:

@@ -474,42 +474,73 @@ def _partition_pdf_or_image_with_ocr(
 ):
     """Partitions and image or PDF using Tesseract OCR. For PDFs, each page is converted
     to an image prior to processing."""
-    import pytesseract
+    # import pytesseract
 
     if is_image:
         if file is not None:
             image = PIL.Image.open(file)
-            text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
+            # text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
         else:
-            text = pytesseract.image_to_string(filename, config=f"-l '{ocr_languages}'")
-        elements = partition_text(
-            text=text,
-            max_partition=max_partition,
-            min_partition=min_partition,
-            metadata_last_modified=metadata_last_modified,
-        )
+            # text = pytesseract.image_to_string(filename, config=f"-l '{ocr_languages}'")
+            image = PIL.Image.open(filename)
+
+        # elements = partition_text(
+        #     text=text,
+        #     max_partition=max_partition,
+        #     min_partition=min_partition,
+        #     metadata_last_modified=metadata_last_modified,
+        # )
+
+        imgElement = Image(f"filename")
+        imgElement.data = image
+        if len(filename.split(".")) > 0:
+            imgElement.ext = filename.split(".")[-1]
+        else:
+            imgElement.ext = ""
+        imgElement.metadata.page_number=0
+        imgElement.metadata.page_location=""
+        imgElement.metadata.filename=filename
+        imgElement.ocr_txt = ""
+        return [imgElement]
 
     else:
         elements = []
         page_number = 0
         for image in convert_pdf_to_images(filename, file):
             page_number += 1
-            metadata = ElementMetadata(
-                filename=filename,
-                page_number=page_number,
-                last_modified=metadata_last_modified,
-            )
-            text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
 
-            _elements = partition_text(
-                text=text,
-                max_partition=max_partition,
-                min_partition=min_partition,
-            )
-            for element in _elements:
-                element.metadata = metadata
-                elements.append(element)
+            imgElement = Image(f"filename")
+            imgElement.data = image
+            if len(filename.split(".")) > 0:
+                imgElement.ext = filename.split(".")[-1]
+            else:
+                imgElement.ext = ""
+            imgElement.metadata.page_number=page_number
+            imgElement.metadata.page_location=""
+            imgElement.metadata.filename=filename
+            imgElement.ocr_txt = ""
+            elements.append(imgElement)
 
             if include_page_breaks:
                 elements.append(PageBreak(text=""))
+        # for image in convert_pdf_to_images(filename, file):
+        #     page_number += 1
+        #     metadata = ElementMetadata(
+        #         filename=filename,
+        #         page_number=page_number,
+        #         last_modified=metadata_last_modified,
+        #     )
+        #     text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
+
+        #     _elements = partition_text(
+        #         text=text,
+        #         max_partition=max_partition,
+        #         min_partition=min_partition,
+        #     )
+        #     for element in _elements:
+        #         element.metadata = metadata
+        #         elements.append(element)
+
+        #     if include_page_breaks:
+        #         elements.append(PageBreak(text=""))
     return elements

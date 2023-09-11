@@ -127,7 +127,7 @@ def partition_docx(
     include_page_breaks: bool = True,
     include_metadata: bool = True,
     metadata_last_modified: Optional[str] = None,
-    ocr_images: bool = True,
+    include_images: bool = True,
     ocr_languages: str = "eng+fra",
     **kwargs,
 ) -> List[Element]:
@@ -223,7 +223,7 @@ def partition_docx(
                 )
                 elements.append(para_element)
             elif "graphicData" in paragraph._p.xml:
-                if ocr_images:
+                if include_images:
                     image_rids = _get_image_rids(paragraph)
                     rels = document.part.rels
                     for rid in image_rids:
@@ -233,15 +233,15 @@ def partition_docx(
                             image_ext = image_part.filename.split(".")[-1]
                             image_stream = BytesIO(image_bytes)
                             image = IMAGEPIL.open(image_stream)
-                            text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
-
-                            imgElement = Image(text)
-                            imgElement.blob = image_bytes
+                            # text = pytesseract.image_to_string(image, config=f"-l '{ocr_languages}'")
+                            imgElement = Image(f"rid:{rid}")
+                            imgElement.data = image
                             imgElement.ext = image_ext
                             imgElement.rid = rid
                             imgElement.metadata.page_number=page_number
                             imgElement.metadata.page_location=index_paragraph
-                            imgElement.ocr_txt = "test"
+                            imgElement.metadata.filename=metadata_filename
+                            imgElement.ocr_txt = ""
                             elements.append(imgElement)
                 else:
                     pass

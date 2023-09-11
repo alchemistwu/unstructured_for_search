@@ -1,20 +1,17 @@
 from unstructured.partition.auto import partition
+import time
+import os
 
-elements = partition("db/Print Screen CRIO_commentaires à discuter.docx")
-print("start!")
-for element in elements[0:100]:
-    if element.category != "PageBreak":
-        print(str(element))
-        print(element.metadata.filetype)
-        print(element.metadata.page_location)
-        print(element.category)
-        print("================================")
-# elements = partition("db/page_6.png", skip_infer_table_types=[], pdf_infer_table_structure=True, strategy="ocr_only")
-# print("start!")
-# for element in elements[0:50]:
-#     if element.category != "PageBreak":
-#         print(str(element))
-#         print(element.metadata.filetype)
-#         print(element.metadata.page_location)
-#         print(element.category)
-#         print("================================")
+
+total_start = time.time()
+for file_name in os.listdir("db"):
+    file_path = os.path.join("db", file_name)
+    print(file_path)
+    start = time.time()
+    elements = partition(file_path, strategy="fast")
+    end = time.time()
+    print(end - start)
+print("finished")
+total_end = time.time()
+print(total_end- total_start)
+
